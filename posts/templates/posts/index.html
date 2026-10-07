@@ -1,58 +1,126 @@
 {% extends "posts/base_site.html" %}
-{% block title %}Recently posts{% endblock %}
-{% block header_title %}Recently posts{% endblock %}
+{% load quill %}
+{% block title %}Recent posts · Quill{% endblock %}
+{% block header_title %}Recent posts{% endblock %}
 
 
 {% block main %}
-    {% if notifications %}
-        {% for notification in notifications %}
-            <a class="notification" href="/posts/post-details/{{ notification.post.slug }}">
-                {{ notification.message }}
-            </a>
-            <button class="delete-button"
-                    onclick="window.location.href='/users/delete-notification/{{ notification.post.slug }}/'">Delete
-            </button>
-            <br><br>
+    <div class="feed">
+        <div class="feed-head">
+            <div>
+                <h1 class="feed-title">Recent posts</h1>
+                <div class="feed-chips">
+                    <span class="chip">Posts today · {{ posts_today }} of {{ max_posts_per_day }}</span>
+                    <span class="chip">Free reads left · {{ reads_left }}</span>
+                </div>
+            </div>
+            <a class="q-btn q-btn-dark" href="{% url 'create_post' %}">Write a post</a>
+        </div>
+
+        {% for message in messages %}
+            <div class="feed-alert feed-alert-{{ message.tags }}" role="alert">{{ message }}</div>
         {% endfor %}
 
-    {% endif %}
-    {% if messages %}
-        <p>
-            {% for message in messages %}
-                <strong>{{ message }}</strong>
-            {% endfor %}
-        </p>
-    {% endif %}
-
-    {% if page_obj %}
-        {% for post in page_obj %}
-            <div class="post">
-                <a href="/posts/post-details/{{ post.slug }}/"><h2>{{ post.title }}</h2></a>
-                <h5>By: {{ post.author }}, on {{ post.publish }}</h5>
+        {% for notification in notifications %}
+            <div class="feed-notice">
+                <span class="feed-notice-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/>
+                        <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>
+                    </svg>
+                </span>
+                <p class="feed-notice-text">
+                    <strong>{{ notification.post.author.username }}</strong> published a new post:
+                    <a href="{% url 'post_details' notification.post.slug %}">{{ notification.post.title }}</a>
+                </p>
+                <a class="feed-notice-close" href="{% url 'delete_notification' notification.post.slug %}"
+                   aria-label="Dismiss notification">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25"
+                         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M18 6 6 18"/>
+                        <path d="m6 6 12 12"/>
+                    </svg>
+                </a>
             </div>
         {% endfor %}
-    {% else %}
-        <h2>No any posts in Blog yet</h2>
-    {% endif %}
 
-    <br>
-    {% if request.user.is_authenticated %}
-        <a class="create-post-button" href="/posts/new-post/">Create New post?</a>
-    {% endif %}
-    <br><br>
-    <div class="pagination">
-        {% if page_obj.has_previous %}
-            <a href="?page={{ page_obj.previous_page_number }}">previous</a>
-        {% endif %}
+        {% if page_obj %}
+            <div class="feed-list">
+                {% for post in page_obj %}
+                    <article class="post-card">
+                        <div class="post-card-meta">
+                            <span class="avatar avatar-sm {% if post.author == request.user %}avatar-self{% else %}avatar-other{% endif %}">
+                                {{ post.author.username|initials }}
+                            </span>
+                            <span class="post-card-author">{{ post.author.username }}</span>
+                            <time class="post-card-date" datetime="{{ post.publish|date:'c' }}">
+                                {{ post.publish|date:"M j, Y · g:i A" }}
+                            </time>
+                        </div>
 
-        <span class="current-page-number">
-            Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}.
-        </span>
+                        <h2 class="post-card-title">
+                            <a class="post-card-link" href="{% url 'post_details' post.slug %}">{{ post.title }}</a>
+                        </h2>
 
-        {% if page_obj.has_next %}
-            <a href="?page={{ page_obj.next_page_number }}">next</a>
+                        {% if post.body %}
+                            <p class="post-card-excerpt">{{ post.body|truncatechars:240 }}</p>
+                        {% endif %}
+
+                        <div class="post-card-stats">
+                            <span title="Likes">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                    <path d="M7 10v12"/>
+                                    <path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"/>
+                                </svg>
+                                {{ post.likes_count }}
+                            </span>
+                            <span title="Comments">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                                </svg>
+                                {{ post.comments_count }}
+                            </span>
+                            <span>{{ post.body|read_time }} min read</span>
+                        </div>
+                    </article>
+                {% endfor %}
+            </div>
+
+            {% if page_obj.paginator.num_pages > 1 %}
+                <nav class="pager" aria-label="Pagination">
+                    {% if page_obj.has_previous %}
+                        <a class="q-btn q-btn-outline" href="?page={{ page_obj.previous_page_number }}">&larr; Newer</a>
+                    {% else %}
+                        <span class="q-btn q-btn-outline is-disabled" aria-disabled="true">&larr; Newer</span>
+                    {% endif %}
+
+                    <span class="pager-status">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+
+                    {% if page_obj.has_next %}
+                        <a class="q-btn q-btn-outline" href="?page={{ page_obj.next_page_number }}">Older &rarr;</a>
+                    {% else %}
+                        <span class="q-btn q-btn-outline is-disabled" aria-disabled="true">Older &rarr;</span>
+                    {% endif %}
+                </nav>
+            {% endif %}
+        {% else %}
+            <div class="feed-empty">
+                <span class="feed-empty-icon">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M12 20h9"/>
+                        <path d="M16.38 3.62a1 1 0 0 1 3 3L7.37 18.64a2 2 0 0 1-.86.5l-2.87.84a.5.5 0 0 1-.62-.62l.84-2.87a2 2 0 0 1 .5-.86z"/>
+                    </svg>
+                </span>
+                <h2 class="feed-empty-title">No posts yet</h2>
+                <p class="feed-empty-text">
+                    Be the first to publish. Give it a title and let AI write the first draft if you&rsquo;re stuck.
+                </p>
+                <a class="q-btn q-btn-dark" href="{% url 'create_post' %}">Write the first post</a>
+            </div>
         {% endif %}
     </div>
-
 {% endblock %}
-

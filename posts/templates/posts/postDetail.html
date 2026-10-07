@@ -1,118 +1,294 @@
 {% extends "posts/base_site.html" %}
-{% block title %}Post Details{% endblock %}
-{% block header_title %}Post Details{% endblock %}
+{% load quill %}
+{% block title %}{{ post.title }} · Quill{% endblock %}
+{% block header_title %}{{ post.title }}{% endblock %}
 
 {% block main %}
-    {% if messages %}
-        {% for message in messages %}
-            {% if message.tags == "warning" %}
-                <p>
-                    <strong style="color: orange">{{ message }}</strong>
-                </p>
-            {% endif %}
-        {% endfor %}
-    {% endif %}
-    {% if not edit %}
-        {% if current_viewing_number %}
-            <p>This is {{ current_viewing_number }} post read today and you have {{ remaining_viewing_number }}
-                remain</p>
-        {% endif %}
+    {% if edit %}
+        <div class="site-container editor-page">
+            <a class="back-link" href="{% url 'post_details' post.slug %}">&larr; Back to post</a>
+            <h1 class="page-title">Edit post</h1>
 
-        <h1>{{ post.title }}</h1>
-        {% if request.user.is_authenticated and post.author == request.user %}
-            <button onclick="location.href='/posts/post-details/{{ post.slug }}?edit=1'">Edit Post</button>
-        {% elif request.user.is_authenticated %}
-            <h5 style="display: inline">By: {{ post.author }} </h5>
-            <form id="subscribe-form" method="POST" action="{% url 'subscribe' %}" style="display: inline">
-                {% csrf_token %}
-                <input type="hidden" name="user_id" value="{{ post.author.id }}">
-                <input type="hidden" name="post_slug" value="{{ post.slug }}">
-                <button onclick="submitForm('subscribe-form')">
-                    subscribe
-                </button>
-                <br>
-                <pre style="text-align: center">{{ post.author.subscribed_users.count }} Subscriber</pre>
-                <br>
-            </form>
-
-        {% else %}
-            <h5>By: {{ post.author }}</h5>
-            <pre style="text-align: center">{{ post.author.subscribed_users.count }} Subscriber</pre>
-            <br>
-        {% endif %}
-        <button onclick="location.href='/posts/post-details/{{ post.slug }}?edit=1&summary=1'">Summarize Post</button>
-        <button onclick="location.href='/posts/post-details/{{ post.slug }}?edit=1&grammar=1'">Fix Grammars in Post
-        </button>
-        <br><br>
-
-        <pre id="post_body">{{ post.body }}</pre>
-
-        {% if request.user.is_authenticated %}
-            <form id="like-form" method="POST" action="{% url 'like_post' %}" style="display: inline">
-                {% csrf_token %}
-                <input type="hidden" name="post_id" value="{{ post.id }}">
-                <i onclick="submitForm('like-form')" id="like" class="fa fa-thumbs-up"
-                   style="font-size: 20px;margin: 10px 5px">
-                    Like</i>
-                <span style="display: inline">{{ post.users_liked.count }}</span>
-            </form>
-
-            <form id="dislike-form" method="POST" action="{% url 'dislike_post' %}" style="display: inline">
-                {% csrf_token %}
-                <input type="hidden" name="post_id" value="{{ post.id }}">
-                <i onclick="submitForm('dislike-form')" id="dislike" class="fa fa-thumbs-down"
-                   style="font-size: 20px;margin: 10px 5px"> Dislike</i>
-                <span style="display: inline">{{ post.users_disliked.count }}</span>
-            </form>
-            <script>
-                function submitForm(formId) {
-                    document.getElementById(formId).submit();
-                }
-            </script>
-        {% endif %}
-        <br>
-        <details {% if expand_comment %}open{% endif %}>
-            <summary>Show Comments</summary>
-            <h2>Comments:</h2>
-            {% for comment in post.comment_set.all %}
-                <div class="comment">
-                    <strong>{{ comment.user_name }}:</strong>
-                    <pre>{{ comment.body }}</pre>
+            {% if grammar_fixed %}
+                <div class="feed-alert feed-alert-info" role="status">
+                    AI fixed the grammar below. Review the changes, then save.
                 </div>
-                <br>
-            {% endfor %}
+            {% endif %}
+
+            <form class="editor-card" action="{% url 'post_details' post.slug %}" method="post" novalidate>
+                {% csrf_token %}
+                {% for field in form %}
+                    <div class="editor-field{% if field.errors %} has-error{% endif %}{% if not forloop.first %} editor-field-gap{% endif %}">
+                        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                        {{ field }}
+                        {% for error in field.errors %}
+                            <small class="editor-error">{{ error }}</small>
+                        {% endfor %}
+                    </div>
+                {% endfor %}
+
+                <div class="editor-actions">
+                    <a class="q-btn q-btn-outline" href="{% url 'post_details' post.slug %}">Cancel</a>
+                    <button class="q-btn q-btn-dark" type="submit">Save changes</button>
+                </div>
+            </form>
+        </div>
+    {% else %}
+        <article class="article">
+            <div class="article-topbar">
+                <a class="back-link" href="{% url 'posts' %}">&larr; Back to feed</a>
+                {% if read_dots %}
+                    <span class="reads-pill">
+                        <span class="reads-dots" aria-hidden="true">
+                            {% for used in read_dots %}<span{% if used %} class="is-used"{% endif %}></span>{% endfor %}
+                        </span>
+                        {{ reads_used }} of {{ max_reads }} free reads today · {{ reads_left }} left
+                    </span>
+                {% endif %}
+            </div>
 
             {% for message in messages %}
-                {% if message.tags == "error" %}
-                    <p>
-                        <strong>{{ message }}</strong>
-                    </p>
+                {% if message.level_tag == "warning" %}
+                    <div class="notice notice-warning" role="alert">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/>
+                        </svg>
+                        <div>
+                            <strong>You received a warning</strong>
+                            <p>{{ message }}</p>
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="feed-alert feed-alert-{{ message.level_tag }}" role="alert">{{ message }}</div>
                 {% endif %}
             {% endfor %}
-            <form action="{% url 'comment_action' %}" method="post">
-                {% csrf_token %}
-                <fieldset class="form-fields">
-                    <legend>Add Comment</legend>
-                    <input type="hidden" name="post_id" value="{{ post.id }}" required>
 
-                    {{ form.as_div }}
+            <h1 class="article-title">{{ post.title }}</h1>
 
-                    <input type="submit" value="Create">
-                </fieldset>
-            </form>
-        </details>
-    {% else %}
-        <form action="/posts/post-details/{{ post.slug }}/" method="post">
-            {% csrf_token %}
-            <fieldset class="form-fields">
-                <legend>Edit Post</legend>
-                <input type="hidden" name="post_id" value="{{ post.id }}" required>
+            <div class="article-byline">
+                <span class="avatar avatar-lg {% if is_author %}avatar-self{% else %}avatar-other{% endif %}">
+                    {{ post.author.username|initials }}
+                </span>
+                <div class="article-byline-text">
+                    <div>
+                        <span class="article-author">{{ post.author.username }}</span>
+                        {% if is_author %}
+                            <span class="badge">You</span>
+                        {% else %}
+                            <span class="article-subscribers">· {{ subscribers_count }} subscriber{{ subscribers_count|pluralize }}</span>
+                        {% endif %}
+                    </div>
+                    <div class="article-meta">
+                        <time datetime="{{ post.publish|date:'c' }}">{{ post.publish|date:"M j, Y · g:i A" }}</time>
+                        · {{ post.body|read_time }} min read
+                    </div>
+                </div>
+                {% if not is_author %}
+                    {% if is_subscribed %}
+                        <span class="q-btn q-btn-sm q-btn-outline is-disabled">Subscribed</span>
+                    {% else %}
+                        <form method="post" action="{% url 'subscribe' %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="user_id" value="{{ post.author.id }}">
+                            <input type="hidden" name="post_slug" value="{{ post.slug }}">
+                            <button class="q-btn q-btn-sm q-btn-dark" type="submit">Subscribe</button>
+                        </form>
+                    {% endif %}
+                {% endif %}
+            </div>
 
-                {{ form.as_div }}
+            <div class="article-actions">
+                {% if is_author and not blocked_until %}
+                    <a class="q-btn q-btn-sm q-btn-outline" href="{% url 'post_details' post.slug %}?edit=1">Edit</a>
+                {% endif %}
+                <button type="button" class="ai-btn ai-btn-sm" id="summarize-button">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                        <path d="M12 2l2.4 7.6L22 12l-7.6 2.4L12 22l-2.4-7.6L2 12l7.6-2.4z"/>
+                    </svg>
+                    Summarize
+                </button>
+                {% if is_author and not blocked_until %}
+                    <a class="ai-btn ai-btn-sm" href="{% url 'post_details' post.slug %}?edit=1&grammar=1">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                            <path d="M12 2l2.4 7.6L22 12l-7.6 2.4L12 22l-2.4-7.6L2 12l7.6-2.4z"/>
+                        </svg>
+                        Fix grammar
+                    </a>
+                {% endif %}
+            </div>
 
-                <input type="submit" value="Save">
-            </fieldset>
-        </form>
+            <hr class="article-divider">
+
+            <div class="ai-summary" id="ai-summary" role="status" hidden>
+                <span class="ai-summary-label">AI summary</span>
+                <p id="ai-summary-text"></p>
+            </div>
+
+            <div class="article-body">{{ post.body|markdown }}</div>
+
+            <hr class="article-divider">
+
+            <div class="reactions">
+                <form method="post" action="{% url 'like_post' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="post_id" value="{{ post.id }}">
+                    <button class="reaction{% if user_liked %} is-active{% endif %}" type="submit"
+                            aria-pressed="{{ user_liked|yesno:'true,false' }}">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                             stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M7 10v12"/>
+                            <path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"/>
+                        </svg>
+                        Like · {{ likes_count }}
+                    </button>
+                </form>
+                <form method="post" action="{% url 'dislike_post' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="post_id" value="{{ post.id }}">
+                    <button class="reaction{% if user_disliked %} is-active{% endif %}" type="submit"
+                            aria-pressed="{{ user_disliked|yesno:'true,false' }}">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                             stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M17 14V2"/>
+                            <path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L12 22a3.13 3.13 0 0 1-3-3.88Z"/>
+                        </svg>
+                        Dislike · {{ dislikes_count }}
+                    </button>
+                </form>
+            </div>
+
+            <hr class="article-divider">
+
+            <section class="comments" id="comments">
+                <h2 class="comments-title">Comments <span>{{ comments|length }}</span></h2>
+
+                {% for comment in comments %}
+                    <div class="comment-card">
+                        <span class="avatar {% if comment.user_name == request.user.username %}avatar-self{% else %}avatar-other{% endif %}">
+                            {{ comment.user_name|initials }}
+                        </span>
+                        <div class="comment-content">
+                            <div class="comment-meta">
+                                <span class="comment-author">{{ comment.user_name }}</span>
+                                <time datetime="{{ comment.created|date:'c' }}">{{ comment.created|ago }}</time>
+                                {% with filtered=comment.body|filtered_count %}
+                                    {% if filtered %}
+                                        · {{ filtered }} word{{ filtered|pluralize }} filtered
+                                    {% endif %}
+                                {% endwith %}
+                            </div>
+                            <p class="comment-body">{{ comment.body|censored }}</p>
+                        </div>
+                    </div>
+                {% endfor %}
+
+                <form class="comment-form" method="post" action="{% url 'comment_action' %}#comments" novalidate>
+                    {% csrf_token %}
+                    <input type="hidden" name="post_id" value="{{ post.id }}">
+
+                    <div class="editor-field{% if form.body.errors %} has-error{% endif %}">
+                        <label for="{{ form.body.id_for_label }}">Add a comment</label>
+                        {{ form.body }}
+                        {% for error in form.body.errors %}
+                            <small class="editor-error">{{ error }}</small>
+                        {% endfor %}
+                    </div>
+
+                    {% if blocked_until %}
+                        <div class="notice notice-danger notice-compact">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <circle cx="12" cy="12" r="10"/>
+                                <path d="m4.9 4.9 14.2 14.2"/>
+                            </svg>
+                            <p>You&rsquo;re blocked from commenting until {{ blocked_until|date:"M j, Y" }}.</p>
+                        </div>
+                        <div class="comment-form-footer">
+                            <span></span>
+                            <button class="q-btn q-btn-sm q-btn-dark" type="submit" disabled>Commenting paused</button>
+                        </div>
+                    {% else %}
+                        <div class="notice notice-warning notice-compact" id="comment-cooldown"
+                             {% if not comment_wait_seconds %}hidden{% endif %}>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <circle cx="12" cy="12" r="10"/>
+                                <path d="M12 6v6l4 2"/>
+                            </svg>
+                            <p>One comment every {{ comment_cooldown }} seconds &mdash; you can post again in
+                                <span data-countdown>{{ comment_wait_seconds }}</span>s.</p>
+                        </div>
+                        <div class="comment-form-footer">
+                            <span class="comment-hint" id="comment-hint"
+                                  {% if comment_wait_seconds %}hidden{% endif %}>Keep it kind &mdash; offensive words are hidden automatically.</span>
+                            <button class="q-btn q-btn-sm q-btn-dark" type="submit" id="comment-submit"
+                                    data-wait="{{ comment_wait_seconds }}"
+                                    {% if comment_wait_seconds %}disabled{% endif %}>
+                                {% if comment_wait_seconds %}Wait {{ comment_wait_seconds }}s{% else %}Post comment{% endif %}
+                            </button>
+                        </div>
+                    {% endif %}
+                </form>
+            </section>
+        </article>
+
+        {{ post.body|json_script:"post-body" }}
+        <script>
+            (function () {
+                const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+                // AI summary
+                const summarizeButton = document.getElementById('summarize-button');
+                const summary = document.getElementById('ai-summary');
+                const summaryText = document.getElementById('ai-summary-text');
+
+                summarizeButton.addEventListener('click', async () => {
+                    summarizeButton.disabled = true;
+                    summary.hidden = false;
+                    summary.classList.remove('is-error');
+                    summaryText.textContent = 'Summarizing…';
+                    try {
+                        const response = await fetch('{% url "summarize_post" %}', {
+                            method: 'POST',
+                            headers: {'X-CSRFToken': csrfToken, 'Content-Type': 'application/json'},
+                            credentials: 'same-origin',
+                            body: JSON.stringify({body: JSON.parse(document.getElementById('post-body').textContent)}),
+                        });
+                        if (!response.ok) throw new Error('HTTP ' + response.status);
+                        summaryText.textContent = (await response.json()).response;
+                    } catch (error) {
+                        console.error('Summarize failed:', error);
+                        summary.classList.add('is-error');
+                        summaryText.textContent = 'Couldn’t reach the AI service. Try again in a moment.';
+                    } finally {
+                        summarizeButton.disabled = false;
+                    }
+                });
+
+                // Comment cooldown countdown
+                const submit = document.getElementById('comment-submit');
+                if (!submit) return;
+                let wait = Number(submit.dataset.wait);
+                if (!wait) return;
+
+                const cooldown = document.getElementById('comment-cooldown');
+                const countdown = cooldown.querySelector('[data-countdown]');
+                const hint = document.getElementById('comment-hint');
+                const timer = setInterval(() => {
+                    wait -= 1;
+                    if (wait > 0) {
+                        countdown.textContent = wait;
+                        submit.textContent = 'Wait ' + wait + 's';
+                        return;
+                    }
+                    clearInterval(timer);
+                    cooldown.hidden = true;
+                    hint.hidden = false;
+                    submit.disabled = false;
+                    submit.textContent = 'Post comment';
+                }, 1000);
+            })();
+        </script>
     {% endif %}
-
 {% endblock %}

@@ -1,34 +1,8 @@
 {% extends "users/base_site.html" %}
 
-{% block header_title %}Login Page{% endblock %}
-{% block title %}Login Page{% endblock %}
+{% block title %}Log in · Quill{% endblock %}
 
-{% block main %}
-    <form novalidate method="post">
-        {% csrf_token %}
-        <fieldset class="form-fields">
-            <legend>Login</legend>
-            {% csrf_token %}
-            {% for field in form %}
-                <div>
-                    {% if field.errors %}
-                        <ul class="error-list">
-                            {% for error in field.errors %}
-                                <li>{{ error }}</li>
-                            {% endfor %}
-                        </ul>
-                    {% endif %}
-                    {{ field.label_tag }} {{ field }}
-                </div>
-            {% endfor %}
-            <br>
-            <input class="log-in-button" type="submit" value="Log in">
-
-            <br><br>
-            <span>Don't have account? </span>
-            <a href="/users/add-user/">sign up</a>
-            <br><br>
-        </fieldset>
-    </form>
-
-{% endblock %}
+{% block auth_title %}Welcome back{% endblock %}
+{% block auth_subtitle %}Log in to read and write posts.{% endblock %}
+{% block submit_label %}Log in{% endblock %}
+{% block auth_switch %}New here? <a href="{% url 'add_user' %}">Create an account</a>{% endblock %}

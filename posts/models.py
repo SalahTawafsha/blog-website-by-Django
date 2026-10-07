@@ -46,8 +46,7 @@ class Post(models.Model):
     def save(self, *args, **kwargs):
         if not self.slug:
             self.slug = slugify(self.title)
-
-        self.uniquify()
+            self.uniquify()
 
         self.body = profanity.censor(self.body)
 
@@ -96,10 +95,10 @@ class Comment(models.Model):
                 user = User.objects.get(username=self.user_name)
                 user.usertracking.increment_warnings()
                 user.usertracking.save()
-                user.save(*args, **kwargs)
-                return True
             except User.DoesNotExist:
                 pass
+            super().save(*args, **kwargs)
+            return True
 
         super().save(*args, **kwargs)
         return False

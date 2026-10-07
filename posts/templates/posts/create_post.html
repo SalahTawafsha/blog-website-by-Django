@@ -1,119 +1,308 @@
 {% extends "posts/base_site.html" %}
-{% block title %}Create New Post{% endblock %}
-{% block header_title %}Create New Post{% endblock %}
-
-{% load static %}
+{% block title %}New post · Quill{% endblock %}
+{% block header_title %}New post{% endblock %}
 
 {% block main %}
-    <form action="{% url 'create_post' %}" method="post">
-        {% csrf_token %}
-        <fieldset class="form-fields">
-            <legend>Create New Post</legend>
-            {% for message in messages %}
-                <p>
-                    <strong>{{ message }}</strong>
-                </p>
-            {% endfor %}
+    <div class="site-container editor-page">
+        <a class="back-link" href="{% url 'posts' %}">&larr; Back to feed</a>
+        <h1 class="page-title">New post</h1>
 
-            <script>
+        {% if blocked_until %}
+            <div class="editor-banner" role="alert">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                     stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/>
+                    <path d="M12 9v4"/>
+                    <path d="M12 17h.01"/>
+                </svg>
+                <div>
+                    <strong>You&rsquo;re blocked from publishing until {{ blocked_until|date:"M j, Y" }}</strong>
+                    <p>Too many of your posts or comments contained censored words. You can keep writing, but
+                        publishing is paused until then.</p>
+                </div>
+            </div>
+        {% elif limit_reached %}
+            <div class="editor-banner" role="alert">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                     stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/>
+                    <path d="M12 9v4"/>
+                    <path d="M12 17h.01"/>
+                </svg>
+                <div>
+                    <strong>You&rsquo;ve hit today&rsquo;s limit of {{ max_posts_per_day }} posts</strong>
+                    <p>You can keep writing, but publishing is paused until tomorrow.</p>
+                </div>
+            </div>
+        {% endif %}
 
-                function summarizePost() {
-                    const body = document.getElementById('id_body').value;
-                    const apiUrl = '/GPT/summarize-post/';
+        {% for message in messages %}
+            <div class="feed-alert feed-alert-{{ message.tags }}" role="alert">{{ message }}</div>
+        {% endfor %}
 
-                    document.getElementById('id_body').value = "please wait"
+        <div class="editor-layout">
+            <form class="editor-card" id="post-editor" action="{% url 'create_post' %}" method="post" novalidate>
+                {% csrf_token %}
 
-                    // Get the CSRF token from your Django template
-                    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+                <div class="editor-field{% if form.title.errors %} has-error{% endif %}">
+                    <label for="{{ form.title.id_for_label }}">Title</label>
+                    {{ form.title }}
+                    {% for error in form.title.errors %}
+                        <small class="editor-error">{{ error }}</small>
+                    {% endfor %}
+                </div>
 
-                    fetch(apiUrl, {
-                        method: 'POST',
-                        headers: {
-                            'X-CSRFToken': csrfToken,
-                            'Content-Type': 'application/json',
-                        },
-                        credentials: 'same-origin',
-                        body: JSON.stringify({body: body}),
-                    })
-                        .then(response => {
-                            return response.json(); // Treat the response as plain text.
-                        })
-                        .then(data => {
-                            document.getElementById('id_body').value = data["response"]
-                        })
-                        .catch(error => {
-                            console.error('Fetch Error:', error);
-                        });
+                <div class="editor-toolbar">
+                    <div class="segmented" role="tablist" aria-label="Editor mode">
+                        <button type="button" class="segmented-item is-active" role="tab" aria-selected="true"
+                                data-editor-mode="write">Write
+                        </button>
+                        <button type="button" class="segmented-item" role="tab" aria-selected="false"
+                                data-editor-mode="preview">Preview
+                        </button>
+                    </div>
+
+                    <div class="ai-actions">
+                        <button type="button" class="ai-btn" data-ai-endpoint="{% url 'generate_post' %}"
+                                data-ai-source="title" data-ai-busy="Drafting…">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                <path d="M12 2l2.4 7.6L22 12l-7.6 2.4L12 22l-2.4-7.6L2 12l7.6-2.4z"/>
+                            </svg>
+                            Draft from title
+                        </button>
+                        <button type="button" class="ai-btn" data-ai-endpoint="{% url 'fix_post_grammar' %}"
+                                data-ai-source="body" data-ai-busy="Fixing grammar…">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                <path d="M12 2l2.4 7.6L22 12l-7.6 2.4L12 22l-2.4-7.6L2 12l7.6-2.4z"/>
+                            </svg>
+                            Fix grammar
+                        </button>
+                        <button type="button" class="ai-btn" data-ai-endpoint="{% url 'summarize_post' %}"
+                                data-ai-source="body" data-ai-busy="Summarizing…">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                <path d="M12 2l2.4 7.6L22 12l-7.6 2.4L12 22l-2.4-7.6L2 12l7.6-2.4z"/>
+                            </svg>
+                            Summarize
+                        </button>
+                    </div>
+                </div>
+                <p class="ai-status" id="ai-status" role="status" hidden></p>
+
+                <div class="editor-field{% if form.body.errors %} has-error{% endif %}">
+                    <label for="{{ form.body.id_for_label }}">Body</label>
+                    {{ form.body }}
+                    <div class="editor-preview" id="body-preview" hidden></div>
+                    {% for error in form.body.errors %}
+                        <small class="editor-error">{{ error }}</small>
+                    {% endfor %}
+                    <div class="editor-hint">
+                        <span>Markdown supported · ## heading, **bold**, - list</span>
+                        <span id="word-count">0 words</span>
+                    </div>
+                </div>
+
+                <div class="editor-actions">
+                    <a class="q-btn q-btn-outline" href="{% url 'posts' %}">Cancel</a>
+                    {% if publishing_paused %}
+                        <button class="q-btn q-btn-dark" type="submit" disabled>Publishing paused</button>
+                    {% else %}
+                        <button class="q-btn q-btn-dark" type="submit">Publish</button>
+                    {% endif %}
+                </div>
+            </form>
+
+            <aside class="editor-sidebar">
+                <section class="side-card">
+                    <div class="quota-head">
+                        <h2 class="side-card-title">Posts today</h2>
+                        <span class="quota-count{% if limit_reached %} is-full{% endif %}">
+                            {{ posts_today }} / {{ max_posts_per_day }}
+                        </span>
+                    </div>
+                    <div class="quota-bar{% if limit_reached %} is-full{% endif %}">
+                        {% for filled in quota_segments %}
+                            <span class="{% if filled %}is-filled{% endif %}"></span>
+                        {% endfor %}
+                    </div>
+                    <p class="side-card-text">
+                        {% if limit_reached %}
+                            Limit reached. Publishing reopens tomorrow.
+                        {% else %}
+                            {{ posts_left }} post{{ posts_left|pluralize }} left today.
+                        {% endif %}
+                    </p>
+                </section>
+
+                <section class="side-card">
+                    <h2 class="side-card-title">AI tools</h2>
+                    <ul class="ai-tools">
+                        <li>
+                            <span class="ai-tools-icon">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                    <path d="M12 2l2.4 7.6L22 12l-7.6 2.4L12 22l-2.4-7.6L2 12l7.6-2.4z"/>
+                                </svg>
+                            </span>
+                            <p><strong>Draft from title</strong> writes a first version you can edit.</p>
+                        </li>
+                        <li>
+                            <span class="ai-tools-icon">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                     stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+                                     aria-hidden="true">
+                                    <path d="M20 6 9 17l-5-5"/>
+                                </svg>
+                            </span>
+                            <p><strong>Fix grammar</strong> corrects spelling and phrasing in place.</p>
+                        </li>
+                        <li>
+                            <span class="ai-tools-icon">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                     aria-hidden="true">
+                                    <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/>
+                                    <path d="M14 2v4a2 2 0 0 0 2 2h4"/>
+                                    <path d="M16 13H8"/>
+                                    <path d="M16 17H8"/>
+                                </svg>
+                            </span>
+                            <p><strong>Summarize</strong> condenses the body into a short TL;DR.</p>
+                        </li>
+                    </ul>
+                </section>
+            </aside>
+        </div>
+    </div>
+
+    <script>
+        (function () {
+            const form = document.getElementById('post-editor');
+            const title = document.getElementById('{{ form.title.id_for_label }}');
+            const body = document.getElementById('{{ form.body.id_for_label }}');
+            const preview = document.getElementById('body-preview');
+            const wordCount = document.getElementById('word-count');
+            const aiStatus = document.getElementById('ai-status');
+            const aiButtons = form.querySelectorAll('[data-ai-endpoint]');
+            const modeButtons = form.querySelectorAll('[data-editor-mode]');
+            const csrfToken = form.querySelector('[name=csrfmiddlewaretoken]').value;
+
+            function updateWordCount() {
+                const words = body.value.trim().split(/\s+/).filter(Boolean).length;
+                wordCount.textContent = words + (words === 1 ? ' word' : ' words');
+            }
+
+            function escapeHtml(text) {
+                return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;');
+            }
+
+            function renderInline(text) {
+                return escapeHtml(text)
+                    .replace(/`([^`]+)`/g, '<code>$1</code>')
+                    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+                    .replace(/\*([^*]+)\*/g, '<em>$1</em>');
+            }
+
+            // Small Markdown subset: headings, bullet lists, paragraphs and inline bold/italic/code.
+            function renderMarkdown(source) {
+                const html = [];
+                let paragraph = [];
+                let listItems = [];
+
+                function flush() {
+                    if (paragraph.length) html.push('<p>' + paragraph.map(renderInline).join('<br>') + '</p>');
+                    if (listItems.length) html.push('<ul>' + listItems.map(item => '<li>' + renderInline(item) + '</li>').join('') + '</ul>');
+                    paragraph = [];
+                    listItems = [];
                 }
 
-                function fixGrammarPost() {
-                    const body = document.getElementById('id_body').value;
-                    const apiUrl = '/GPT/fix-post-grammar/';
+                source.split('\n').forEach(line => {
+                    const heading = line.match(/^(#{1,3})\s+(.*)$/);
+                    const listItem = line.match(/^\s*[-*]\s+(.*)$/);
+                    if (heading) {
+                        flush();
+                        const level = heading[1].length + 1;
+                        html.push('<h' + level + '>' + renderInline(heading[2]) + '</h' + level + '>');
+                    } else if (listItem) {
+                        if (paragraph.length) flush();
+                        listItems.push(listItem[1]);
+                    } else if (!line.trim()) {
+                        flush();
+                    } else {
+                        if (listItems.length) flush();
+                        paragraph.push(line);
+                    }
+                });
+                flush();
+                return html.join('');
+            }
 
-                    document.getElementById('id_body').value = "please wait"
+            function setMode(mode) {
+                const isPreview = mode === 'preview';
+                modeButtons.forEach(button => {
+                    const active = button.dataset.editorMode === mode;
+                    button.classList.toggle('is-active', active);
+                    button.setAttribute('aria-selected', active);
+                });
+                if (isPreview) {
+                    preview.innerHTML = body.value.trim()
+                        ? renderMarkdown(body.value)
+                        : '<p class="editor-preview-empty">Nothing to preview yet.</p>';
+                }
+                preview.hidden = !isPreview;
+                body.hidden = isPreview;
+            }
 
-                    // Get the CSRF token from your Django template
-                    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+            function showStatus(text, isError) {
+                aiStatus.textContent = text;
+                aiStatus.classList.toggle('is-error', Boolean(isError));
+                aiStatus.hidden = !text;
+            }
 
-                    fetch(apiUrl, {
-                        method: 'POST',
-                        headers: {
-                            'X-CSRFToken': csrfToken,
-                            'Content-Type': 'application/json',
-                        },
-                        credentials: 'same-origin',
-                        body: JSON.stringify({body: body}),
-                    })
-                        .then(response => {
-                            return response.json(); // Treat the response as plain text.
-                        })
-                        .then(data => {
-                            document.getElementById('id_body').value = data["response"]
-                        })
-                        .catch(error => {
-                            console.error('Fetch Error:', error);
-                        });
+            function setBusy(busy) {
+                aiButtons.forEach(button => button.disabled = busy);
+                body.readOnly = busy;
+                form.classList.toggle('is-busy', busy);
+            }
+
+            async function runAiTool(button) {
+                const source = button.dataset.aiSource;
+                const input = source === 'title' ? title : body;
+                const value = input.value.trim();
+
+                if (!value) {
+                    showStatus(source === 'title' ? 'Add a title first.' : 'Write something in the body first.', true);
+                    setMode('write');
+                    input.focus();
+                    return;
                 }
 
-
-                function generatePost() {
-                    const title = document.getElementById('id_title').value;
-                    const apiUrl = "/GPT/create-post/";
-
-                    document.getElementById('id_body').value = 'please wait';
-
-                    // Get the CSRF token from your Django template
-                    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-
-                    fetch(apiUrl, {
+                setBusy(true);
+                showStatus(button.dataset.aiBusy, false);
+                try {
+                    const response = await fetch(button.dataset.aiEndpoint, {
                         method: 'POST',
-                        headers: {
-                            'X-CSRFToken': csrfToken,
-                            'Content-Type': 'application/json',
-                        },
+                        headers: {'X-CSRFToken': csrfToken, 'Content-Type': 'application/json'},
                         credentials: 'same-origin',
-                        body: JSON.stringify({title: title}),
-                    })
-                        .then(response => {
-                            return response.json(); // Treat the response as plain text.
-                        })
-                        .then(data => {
-                            document.getElementById('id_body').value = data["response"]
-                        })
-                        .catch(error => {
-                            console.error('Fetch Error:', error);
-                        });
+                        body: JSON.stringify({[source]: value}),
+                    });
+                    if (!response.ok) throw new Error('HTTP ' + response.status);
+                    const data = await response.json();
+                    body.value = data.response;
+                    updateWordCount();
+                    if (!preview.hidden) setMode('preview');
+                    showStatus('', false);
+                } catch (error) {
+                    console.error('AI tool failed:', error);
+                    showStatus('Couldn’t reach the AI service. Your text is unchanged — try again.', true);
+                } finally {
+                    setBusy(false);
                 }
-            </script>
-            <button type="button" onclick="generatePost()">Generate By GPT</button>
+            }
 
-            {{ form.as_div }}
-
-            <button type="button" onclick="summarizePost()">Summarize post</button>
-            <button type="button" onclick="fixGrammarPost()">Fix Grammar</button>
-            <br>
-            <input type="submit" value="Create">
-        </fieldset>
-    </form>
-
+            modeButtons.forEach(button => button.addEventListener('click', () => setMode(button.dataset.editorMode)));
+            aiButtons.forEach(button => button.addEventListener('click', () => runAiTool(button)));
+            body.addEventListener('input', updateWordCount);
+            updateWordCount();
+        })();
+    </script>
 {% endblock %}

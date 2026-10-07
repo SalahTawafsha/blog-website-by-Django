@@ -1,0 +1,202 @@
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Schibsted+Grotesk:wght@600;700&display=swap");
+
+.auth {
+    --auth-dark: #15171C;
+    --auth-light: #F3F3EF;
+    --auth-ink: #15171C;
+    --auth-muted: #5B5E66;
+    --auth-border: #D6D6D1;
+    --auth-accent: #3B30E0;
+    --auth-danger: #C2352B;
+
+    font-family: "IBM Plex Sans", system-ui, sans-serif;
+}
+
+/* Left showcase panel */
+.auth-showcase {
+    background: var(--auth-dark);
+    color: #fff;
+    padding: 48px 72px;
+}
+
+.auth-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 22px;
+    font-weight: 600;
+}
+
+.auth-brand-logo {
+    width: 36px;
+    height: 36px;
+    filter: invert(1); /* the logo is dark-on-light; flip it for the dark panel */
+}
+
+.auth-showcase-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.auth-headline {
+    font-family: "Schibsted Grotesk", sans-serif;
+    font-size: clamp(40px, 4.4vw, 64px);
+    font-weight: 700;
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    margin-bottom: 40px;
+}
+
+.auth-features {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    color: #D4D5DA;
+    font-size: 16px;
+}
+
+.auth-features li {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.auth-features img {
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+}
+
+.auth-footer {
+    color: #7C7F88;
+    font-size: 13px;
+}
+
+/* Right form panel */
+.auth-panel {
+    background: var(--auth-light);
+    color: var(--auth-ink);
+    padding: 48px 24px;
+}
+
+.auth-card {
+    width: 100%;
+    max-width: 400px;
+}
+
+.auth-title {
+    font-family: "Schibsted Grotesk", sans-serif;
+    font-size: 34px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    margin-bottom: 8px;
+}
+
+.auth-subtitle {
+    color: var(--auth-muted);
+    margin-bottom: 20px;
+}
+
+.auth-field {
+    margin-bottom: 18px;
+}
+
+.auth-field label {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.auth-field input {
+    width: 100%;
+    height: 48px;
+    padding: 0 14px;
+    font-size: 15px;
+    color: var(--auth-ink);
+    background: #fff;
+    border: 1px solid var(--auth-border);
+    border-radius: 8px;
+    outline: none;
+    transition: border-color .15s, box-shadow .15s;
+}
+
+.auth-field input:focus {
+    border-color: var(--auth-accent);
+    box-shadow: 0 0 0 3px rgba(59, 48, 224, .15);
+}
+
+.auth-field.has-error input {
+    border-color: var(--auth-danger);
+}
+
+.auth-field-help {
+    display: block;
+    margin-top: 8px;
+    color: #7C7F88;
+    font-size: 13px;
+}
+
+ul.auth-field-help {
+    padding-left: 18px;
+    margin-bottom: 0;
+}
+
+ul.auth-field-help li + li {
+    margin-top: 2px;
+}
+
+.auth-field-error {
+    display: block;
+    margin-top: 6px;
+    color: var(--auth-danger);
+    font-size: 13px;
+}
+
+.auth-alert {
+    margin-bottom: 18px;
+    padding: 10px 14px;
+    font-size: 14px;
+    color: var(--auth-danger);
+    background: #FBEAE8;
+    border: 1px solid #F1C3BE;
+    border-radius: 8px;
+}
+
+.auth-submit {
+    width: 100%;
+    height: 44px;
+    margin-top: 10px;
+    font-size: 15px;
+    font-weight: 500;
+    color: #fff;
+    background: var(--auth-dark);
+    border: none;
+    border-radius: 8px;
+    transition: background .15s;
+}
+
+.auth-submit:hover {
+    background: #2A2D36;
+}
+
+.auth-switch {
+    margin-top: 20px;
+    text-align: center;
+    color: var(--auth-muted);
+}
+
+.auth-switch a {
+    color: var(--auth-accent);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.auth-switch a:hover {
+    text-decoration: underline;
+}

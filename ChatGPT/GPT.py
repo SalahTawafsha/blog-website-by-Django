@@ -1,8 +1,10 @@
+import os
+
 import openai
 
 
 class GPT:
-    KEY = "{YOUR_API_KEY}"
+    KEY = os.environ.get("OPENAI_API_KEY")
 
     @staticmethod
     def __connect(message):

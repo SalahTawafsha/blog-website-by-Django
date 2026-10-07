@@ -1,5 +1,5 @@
 from django.contrib import messages
-from django.contrib.auth import login, authenticate, logout
+from django.contrib.auth import login, authenticate, logout, password_validation
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
 from django import forms
@@ -22,13 +22,20 @@ class AddUserForm(UserCreationForm):
     class Meta:
         model = User
         fields = ['username', 'email', 'password1', 'password2']
+        help_texts = {'username': ''}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['password2'].label = 'Confirm password'
+        self.fields['password2'].help_text = ''
 
 
 def user_register(request):
+    password_rules = password_validation.password_validators_help_texts()
     try:
         if request.method == "GET":
             form = AddUserForm()
-            return render(request, "users/add_user.html", {"form": form})
+            return render(request, "users/add_user.html", {"form": form, "password_rules": password_rules})
 
         form = AddUserForm(request.POST)
         if form.is_valid():
@@ -39,7 +46,7 @@ def user_register(request):
             login(request, user)
             return redirect("index")
         else:
-            return render(request, "users/add_user.html", {"form": form})
+            return render(request, "users/add_user.html", {"form": form, "password_rules": password_rules})
     except OperationalError:
         return render(request, "database_error.html")
 
@@ -61,6 +68,7 @@ def user_log_in(request):
             if user is not None:
                 login(request, user)
                 return redirect("posts")
+            form.add_error(None, "Invalid username or password.")
 
         return render(request, "users/log_in.html", {"form": form})
     except OperationalError:

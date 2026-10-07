@@ -1,9 +1,10 @@
-{% load static %}
+{% load static quill %}
 <!doctype html>
 <html lang="en">
 <head>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css"
+          integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
     <link rel="stylesheet" type="text/css" href="{% static 'posts/style.css' %}"/>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=0.75">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
@@ -11,16 +12,30 @@
     <title>{% block title %}{% endblock %}</title>
 </head>
 <body>
-<header>
-    <ul class="horizontal-items">
-        <li><a href="/posts/">Home Screen</a></li>
-        <li><h3>{% block header_title %}{% endblock %}</h3></li>
-        {% if request.user.is_authenticated %}
-            <li><a href="/users/log-out">log out</a></li>
-        {% else %}
-            <li><a href="/">Log in</a></li>
-        {% endif %}
-    </ul>
+<header class="site-header">
+    <div class="site-container site-header-inner">
+        {% with url_name=request.resolver_match.url_name %}
+            <a class="site-brand" href="{% url 'posts' %}">
+                <img class="site-brand-logo" src="{% static 'posts/logo.svg' %}" alt="">
+                <span>Quill</span>
+            </a>
+            <nav class="site-nav">
+                <a class="site-nav-link{% if url_name == 'posts' %} is-active{% endif %}" href="{% url 'posts' %}">Feed</a>
+                <a class="site-nav-link{% if url_name == 'create_post' %} is-active{% endif %}"
+                   href="{% url 'create_post' %}">Write</a>
+            </nav>
+        {% endwith %}
+
+        <div class="site-user">
+            {% if request.user.is_authenticated %}
+                <span class="avatar avatar-self">{{ request.user.username|initials }}</span>
+                <span class="site-username">{{ request.user.username }}</span>
+                <a class="q-btn q-btn-outline" href="{% url 'log_out' %}">Log out</a>
+            {% else %}
+                <a class="q-btn q-btn-outline" href="{% url 'index' %}">Log in</a>
+            {% endif %}
+        </div>
+    </div>
 </header>
 {% block aside %}
 
@@ -31,16 +46,13 @@
     {% endblock %}
 </main>
 
-<footer>
-    <ul class="horizontal-items">
-
-        <li>
-            <p>Salah Tawafsha &copy 2023</p>
-        </li>
-        <li>
-            <a href="mailto: salaht321@gmail.com" class="contact" target="_blank">Send Feedback</a>
-        </li>
-    </ul>
+<footer class="site-footer">
+    <div class="site-container site-footer-inner">
+        <span>&copy; {% now "Y" %} Salah Tawafsha</span>
+        <a href="mailto:salaht321@gmail.com" target="_blank">Send feedback</a>
+    </div>
 </footer>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
 </body>
 </html>
